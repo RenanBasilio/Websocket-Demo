@@ -1,42 +1,52 @@
-var webSocket;
+var controlSocket, streamSocket;
 
 window.onload = function () {
-
-    webSocket = new WebSocket("ws://localhost:8080/WebsocketDemo/upstream");
-
-    var echoText = document.getElementById("echoText");
-    echoText.value = "";
-    var message = document.getElementById("message");
-
-    webSocket.onopen = function(message){ wsOpen(message);};
-    webSocket.onmessage = function(message){ wsGetMessage(message);};
-    webSocket.onclose = function(message){ wsClose(message);};
-    webSocket.onerror = function(message){ wsError(message);};
-
+    draw(0);
+    openControlConnection();
 }
 
-function wsOpen(message){
-    echoText.value += "Connected ... \n";
+function openControlConnection() {
+    controlSocket = new WebSocket("ws://localhost:8080/WebsocketDemo/control");
+    controlSocket.onopen = function(event) { console.log("Control connection established."); };
+    controlSocket.onclose = function(event) { console.log("Control connection closed."); };
+    controlSocket.onmessage = function(event) { onControlMessage(event); };
 }
 
-function wsSendMessage(){
-    webSocket.send(message.value);
-    echoText.value += "Message sent to the server : " + message.value + "\n";
-    message.value = "";
+function onControlMessage(event) {
+    var message = JSON.parse(event.data);
+    switch (message.type) {
+        case "pairing":
+            openStreamConnection(message.spid);
+            break;
+        default:
+            break;
+    }
 }
 
-function wsCloseConnection(){
-    webSocket.close();
+function openStreamConnection(spid) {
+    streamSocket = new WebSocket("ws://localhost:8080/WebsocketDemo/stream?spid=" + spid);
+    streamSocket.onopen = function(event) { console.log("Stream connection established."); };
+    streamSocket.onclose = function(event) { console.log("Stream connection closed."); };
+    streamSocket.onmessage = function(event) { processStream(event.data); };
 }
 
-function wsGetMessage(message){
-    echoText.value += "Message received from to the server : " + message.data + "\n";
+function processStream(data) {
+    draw(data);
 }
 
-function wsClose(message){
-    echoText.value += "Disconnect ... \n";
-}
-
-function wsError(message){
-    echoText.value += "Error ... \n";
+function draw(fill) {
+    var canvas = document.getElementById("progressBar");
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.lineWidth = 20;
+    ctx.strokeStyle = "#BFBFBF";
+    ctx.beginPath();
+    ctx.arc(75, 75, 50, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.strokeStyle = "#474747"
+    ctx.beginPath();
+    ctx.arc(75, 75, 50, -Math.PI/2, -Math.PI/2 + (fill * 2) * Math.PI);
+    ctx.stroke();
+    ctx.font = "25px Verdana";
+    ctx.fillText((fill*100).toFixed(0) + "%", 50, 85)
 }
