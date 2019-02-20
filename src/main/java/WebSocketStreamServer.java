@@ -15,6 +15,8 @@ public class WebSocketStreamServer implements Runnable {
   private Thread _thread;
   private String _spid;
 
+  private boolean _suspended = false;
+
   @OnOpen
   public void onOpen(Session session) {
     _spid = session.getRequestParameterMap().get("spid").get(0);
@@ -37,6 +39,36 @@ public class WebSocketStreamServer implements Runnable {
 
   @OnClose
   public void onClose(Session session) {
+    stop();
+  }
+
+  @OnError
+  public void onError(Throwable error) {
+    error.printStackTrace();
+  }
+
+  @Override
+  public void run() {
+    synchronized (_thread) {
+      try {
+        while (true) {
+          for ( int i = 0; i < 100; i++ ) {
+            if (_suspended) _thread.wait();
+            else {
+              _session.getBasicRemote().sendText(Double.toString(i/100.0));
+              Thread.sleep(50);
+            }
+          }
+        }
+      } catch ( InterruptedException e ) {
+
+      } catch ( Exception e ) {
+        e.printStackTrace();
+      }
+    }
+  }
+
+  public void stop() {
     if (_thread != null && _thread.isAlive()) {
       _thread.interrupt();
       try {
@@ -49,32 +81,23 @@ public class WebSocketStreamServer implements Runnable {
     }
   }
 
-  @OnError
-  public void onError(Throwable error) {
-    error.printStackTrace();
-  }
-
-  @Override
-  public void run() {
-    while (!Thread.interrupted()) {
-      try {
-        for( int i = 0; i < 100; i++ ) {
-          _session.getBasicRemote().sendText(Double.toString(i/100.0));
-          Thread.sleep(50);
-        }
-      } catch ( InterruptedException e ) {
-        break;
-      } catch ( Exception e ) {
-        e.printStackTrace();
-      }
-    }
-  }
-
   public void close() {
     try {
+      stop();
       _session.close();
     } catch (IOException e) {
       e.printStackTrace();
+    }
+  }
+
+  public void pauseStream() {
+    _suspended = true;
+  }
+
+  public void resumeStream() {
+    _suspended = false;
+    synchronized (_thread) {
+      _thread.notify();
     }
   }
 }

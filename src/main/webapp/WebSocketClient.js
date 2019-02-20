@@ -1,4 +1,5 @@
 var controlSocket, streamSocket;
+var paused = false;
 
 window.onload = function () {
     draw(0);
@@ -32,6 +33,33 @@ function openStreamConnection(spid) {
 
 function processStream(data) {
     draw(data);
+}
+
+function toggleStream() {
+    if (paused) {
+        resumeStream();
+        document.getElementById("toggleButton").value = "Pause";
+        paused = false;
+    }
+    else {
+        pauseStream();
+        document.getElementById("toggleButton").value = "Resume";
+        paused = true;
+    }
+}
+
+function pauseStream() {
+    controlSocket.send(JSON.stringify({
+        type: "control",
+        request: "pause"
+    }));
+}
+
+function resumeStream() {
+    controlSocket.send(JSON.stringify({
+        type: "control",
+        request: "resume"
+    }));
 }
 
 function draw(fill) {

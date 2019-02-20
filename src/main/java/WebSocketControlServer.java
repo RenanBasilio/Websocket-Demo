@@ -3,6 +3,7 @@ import java.io.StringReader;
 
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonValue;
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
 import javax.websocket.OnMessage;
@@ -52,9 +53,34 @@ public class WebSocketControlServer {
 
   @OnMessage
   public void onMessage(String message, Session session) {
-    JsonObject object = Json.createParser(new StringReader(message)).getObject();
+    JsonObject object = Json.createReader(new StringReader(message)).readObject();
+    System.out.println("[" + _session.getId() + "] Received " + object.toString() + " from client.");
     if (object.containsKey("type")) {
 
+      switch (object.getString("type")) {
+      
+        case "control":
+      
+          switch (object.getString("request")) {
+      
+            case "pause":
+              System.out.println("[" + _session.getId() + "] Received client request to pause stream.");
+              if (_stream != null) _stream.pauseStream();
+              break;
+      
+            case "resume":
+              System.out.println("[" + _session.getId() + "] Received client request to resume stream.");
+              if (_stream != null) _stream.resumeStream();
+              break;
+
+            default:
+              break;
+          }
+          break;
+      
+        default:
+          break;
+      }
     }
   }
 
